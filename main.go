@@ -143,8 +143,8 @@ func showChangeLimitMenu() int {
 		}
 	case 2:
 		fmt.Println("Zadej novou minimální délku strany pro vyhodnocení velkých obrázků")
+		fmt.Scan(&limitInput)
 		if limitInput > 0 && limitInput < 20000 {
-			fmt.Scan(&limitInput)
 			sideTooBigLimit = limitInput
 			fmt.Println("Délka strany moc velkých obrázků změněna na", sideTooBigLimit, "px")
 		} else {
@@ -152,8 +152,8 @@ func showChangeLimitMenu() int {
 		}
 	case 3:
 		fmt.Println("Zadej novou cílovou velikost kratší strany")
+		fmt.Scan(&limitInput)
 		if limitInput > 0 && limitInput < 2000 {
-			fmt.Scan(&limitInput)
 			shorterSideTarget = limitInput
 			fmt.Println("Cílová velikost kratší strany změněna na", shorterSideTarget, "px")
 		} else {
