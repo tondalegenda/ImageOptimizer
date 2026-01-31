@@ -22,6 +22,10 @@ type ImageFile struct {
 	DimensionsError bool
 }
 
+var fileSizeLimit int = 1000
+var sideTooBigLimit int = 1500
+var shorterSideTarget int = 600
+
 func main() {
 	files, err := os.ReadDir(".") //vytvoří proměnné files a err, které koukají do složky ve které jsme
 	if err != nil {
@@ -33,7 +37,7 @@ func main() {
 	//askToOptimize()
 
 	for {
-		MenuChoice := askToOptimize()
+		MenuChoice := showMainMenu()
 		if MenuChoice == 0 {
 			fmt.Println("Sbohem")
 			break
@@ -54,6 +58,8 @@ func main() {
 		case 5: //konverze JPG obrázků na PNG
 			targets := selectConvImagesJpeg(images)
 			convertSelectedImages(targets)
+		case 99:
+			showChangeLimitMenu()
 		default:
 			fmt.Println("Neplatná volba, zkus to znovu.")
 		}
@@ -72,8 +78,8 @@ func findImagesInFolder(filesInDirectory []os.DirEntry) []ImageFile {
 			config, _, _ := image.DecodeConfig(f) //proměnná config, která přečte metadata z hlavičky
 			f.Close()                             //zavři obrázek
 			kbSize := info.Size() / 1024
-			isTooBig := kbSize > 1000
-			isTooWide := config.Width > 1500 || config.Height > 1500
+			isTooBig := kbSize > int64(fileSizeLimit)
+			isTooWide := config.Width > sideTooBigLimit || config.Height > sideTooBigLimit
 			newImage := ImageFile{Name: file.Name(), Size: kbSize, Width: config.Width, Height: config.Height, FileSizeError: isTooBig, DimensionsError: isTooWide} //proměnná newImage, která do struktury definované výš přidá pro každý obrázek údaje o něm
 			images = append(images, newImage)                                                                                                                       //přidá strukturu do pole images
 		}
@@ -102,16 +108,60 @@ func printFullImageTable(ImageList []ImageFile) {
 	}
 }
 
-func askToOptimize() int {
-	fmt.Println("Chceš optimalizovat obrázky?")
+func showMainMenu() int {
+	fmt.Println("===== Chceš optimalizovat obrázky? =====")
 	fmt.Println("(1) Optimalizovat vše")
 	fmt.Println("(2) Optimalizovat jen velikost")
 	fmt.Println("(3) Optimalizovat jen rozměry")
 	fmt.Println("(4) Konvertovat obrázky na .jpg")
 	fmt.Println("(5) Konvertovat obrázky na .png")
+	fmt.Println("(99) Změnit limity")
 	fmt.Println("(0) Zpět")
 	var menuchoice int
 	fmt.Scan(&menuchoice)
+	return menuchoice
+}
+
+func showChangeLimitMenu() int {
+	fmt.Println("===== Nastavené limity =====")
+	fmt.Println("Maximální souborová velikost:", fileSizeLimit, "kb \t\t (1) Změnit")
+	fmt.Println("Délka strany moc velkých obrázků:", sideTooBigLimit, "px \t (2) Změnit")
+	fmt.Println("Cílová velikost kratší strany:", shorterSideTarget, "px \t\t (3) Změnit")
+	fmt.Println("(0) Zpět")
+	var menuchoice int
+	var limitInput int
+	fmt.Scan(&menuchoice)
+	switch menuchoice {
+	case 1:
+		fmt.Println("Zadej novou maximální souborovou velikost")
+		fmt.Scan(&limitInput)
+		if limitInput > 0 && limitInput < 10000 {
+			fileSizeLimit = limitInput
+			fmt.Println("Maximální souborová velikost změněna na", fileSizeLimit, "kb")
+		} else {
+			fmt.Println("Neplatná hodnota")
+		}
+	case 2:
+		fmt.Println("Zadej novou minimální délku strany pro vyhodnocení velkých obrázků")
+		if limitInput > 0 && limitInput < 20000 {
+			fmt.Scan(&limitInput)
+			sideTooBigLimit = limitInput
+			fmt.Println("Délka strany moc velkých obrázků změněna na", sideTooBigLimit, "px")
+		} else {
+			fmt.Println("Neplatná hodnota")
+		}
+	case 3:
+		fmt.Println("Zadej novou cílovou velikost kratší strany")
+		if limitInput > 0 && limitInput < 2000 {
+			fmt.Scan(&limitInput)
+			shorterSideTarget = limitInput
+			fmt.Println("Cílová velikost kratší strany změněna na", shorterSideTarget, "px")
+		} else {
+			fmt.Println("Neplatná hodnota")
+		}
+	default:
+		fmt.Println("Neplatná hodnota v menu")
+	}
 	return menuchoice
 }
 
@@ -185,11 +235,11 @@ func optimizeSelectedImages(ImageList []ImageFile) {
 
 		var newImage image.Image
 		if selectedImage.Width >= selectedImage.Height && selectedImage.Height > 600 {
-			newImage = resize.Resize(0, 600, decodedImage, resize.Lanczos3)
+			newImage = resize.Resize(0, uint(shorterSideTarget), decodedImage, resize.Lanczos3)
 			fmt.Println("Snižuji výšku na 600px")
 			openAndSaveImages(newImage, selectedImage)
 		} else if selectedImage.Width < selectedImage.Height && selectedImage.Width > 600 {
-			newImage = resize.Resize(600, 0, decodedImage, resize.Lanczos3)
+			newImage = resize.Resize(uint(shorterSideTarget), 0, decodedImage, resize.Lanczos3)
 			fmt.Println("Snižuji šířku na 600px")
 			openAndSaveImages(newImage, selectedImage)
 		} else {
