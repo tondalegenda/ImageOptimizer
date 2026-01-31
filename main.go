@@ -39,15 +39,21 @@ func main() {
 			break
 		}
 		switch MenuChoice {
-		case 1:
+		case 1: // automatický resize všech problematických
 			targets := selectOptiImagesAll(images)
 			optimizeSelectedImages(targets)
-		case 2:
+		case 2: //resize jen těch co mají moc kb
 			targets := selectOptiImagesFileSize(images)
 			optimizeSelectedImages(targets)
-		case 3:
+		case 3: //resize jen těch co mají velké rozměry
 			targets := selectOptiImagesDimensions(images)
 			optimizeSelectedImages(targets)
+		case 4: //konverze PNG obrázků na JPG
+			targets := selectConvImagesPng(images)
+			convertSelectedImages(targets)
+		case 5: //konverze JPG obrázků na PNG
+			targets := selectConvImagesJpeg(images)
+			convertSelectedImages(targets)
 		default:
 			fmt.Println("Neplatná volba, zkus to znovu.")
 		}
@@ -101,6 +107,8 @@ func askToOptimize() int {
 	fmt.Println("(1) Optimalizovat vše")
 	fmt.Println("(2) Optimalizovat jen velikost")
 	fmt.Println("(3) Optimalizovat jen rozměry")
+	fmt.Println("(4) Konvertovat obrázky na .jpg")
+	fmt.Println("(5) Konvertovat obrázky na .png")
 	fmt.Println("(0) Zpět")
 	var menuchoice int
 	fmt.Scan(&menuchoice)
@@ -120,9 +128,9 @@ func selectOptiImagesAll(ImageList []ImageFile) []ImageFile {
 
 func selectOptiImagesFileSize(ImageList []ImageFile) []ImageFile {
 	var SelectedImages []ImageFile
-	for _, OptiImagesAllList := range ImageList {
-		if OptiImagesAllList.FileSizeError {
-			SelectedImages = append(SelectedImages, OptiImagesAllList)
+	for _, OptiImagesFileSizeList := range ImageList {
+		if OptiImagesFileSizeList.FileSizeError {
+			SelectedImages = append(SelectedImages, OptiImagesFileSizeList)
 		}
 	}
 	printFullImageTable(SelectedImages)
@@ -131,9 +139,37 @@ func selectOptiImagesFileSize(ImageList []ImageFile) []ImageFile {
 
 func selectOptiImagesDimensions(ImageList []ImageFile) []ImageFile {
 	var SelectedImages []ImageFile
-	for _, OptiImagesAllList := range ImageList {
-		if OptiImagesAllList.DimensionsError {
-			SelectedImages = append(SelectedImages, OptiImagesAllList)
+	for _, OptiImagesDimensionsList := range ImageList {
+		if OptiImagesDimensionsList.DimensionsError {
+			SelectedImages = append(SelectedImages, OptiImagesDimensionsList)
+		}
+	}
+	printFullImageTable(SelectedImages)
+	return SelectedImages
+}
+
+func selectConvImagesJpeg(ImageList []ImageFile) []ImageFile {
+	var SelectedImages []ImageFile
+	for _, ConvImagesJpegList := range ImageList {
+		extension := filepath.Ext(ConvImagesJpegList.Name)
+		if extension == ".jpg" || extension == ".JPG" {
+			SelectedImages = append(SelectedImages, ConvImagesJpegList)
+		} else {
+			continue
+		}
+	}
+	printFullImageTable(SelectedImages)
+	return SelectedImages
+}
+
+func selectConvImagesPng(ImageList []ImageFile) []ImageFile {
+	var SelectedImages []ImageFile
+	for _, ConvImagesPngList := range ImageList {
+		extension := filepath.Ext(ConvImagesPngList.Name)
+		if extension == ".png" || extension == ".PNG" {
+			SelectedImages = append(SelectedImages, ConvImagesPngList)
+		} else {
+			continue
 		}
 	}
 	printFullImageTable(SelectedImages)
@@ -160,6 +196,43 @@ func optimizeSelectedImages(ImageList []ImageFile) {
 			fmt.Println("S timhle nevim co dělat tvl")
 		}
 
+	}
+}
+
+func convertSelectedImages(ImageList []ImageFile) {
+	for _, selectedImage := range ImageList {
+		fmt.Println("Konvertuji", selectedImage.Name)
+		file, _ := os.Open(selectedImage.Name)   //otevře file
+		decodedImage, _, _ := image.Decode(file) //uloží file do paměti
+		file.Close()                             //zavře file
+
+		convertImageFormat(decodedImage, selectedImage)
+
+	}
+}
+
+func convertImageFormat(newImage image.Image, selectedImage ImageFile) {
+	extension := filepath.Ext(selectedImage.Name) // zjistí typ obrázku a encodne
+	if extension == ".jpg" || extension == ".JPG" {
+		newFileName := selectedImage.Name[:len(selectedImage.Name)-len(extension)] + ".png"
+		newFile, err := os.Create("conv_" + newFileName)
+		fmt.Println(selectedImage.Name, "se bude nově jmenovat", newFileName)
+		selectedImage.Name = newFileName
+		if err != nil {
+			fmt.Println("Přeskakuji")
+			return
+		}
+		png.Encode(newFile, newImage)
+	} else {
+		newFileName := selectedImage.Name[:len(selectedImage.Name)-len(extension)] + ".jpg"
+		newFile, err := os.Create("conv_" + newFileName)
+		fmt.Println(selectedImage.Name, "se bude nově jmenovat", newFileName)
+		selectedImage.Name = newFileName
+		if err != nil {
+			fmt.Println("Přeskakuji")
+			return
+		}
+		jpeg.Encode(newFile, newImage, nil)
 	}
 }
 
